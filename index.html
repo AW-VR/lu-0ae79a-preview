@@ -235,6 +235,15 @@ body{overflow-x:hidden}
 .logcard{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sheet{position:fixed;inset:0;z-index:25;background:rgba(5,4,10,.75);display:none;align-items:flex-end;justify-content:center}
 .sheet.show{display:flex}
+.se-l{display:block;font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;color:var(--dim);margin:10px 0 4px;text-transform:uppercase}
+.se textarea.inp{resize:vertical;font:inherit}
+.se-emo{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}.se-emo button{font-size:20px;padding:6px 0;background:#0f0d1d;border:1px solid var(--line);border-radius:8px;color:inherit}.se-emo button.on{border-color:var(--acc2);box-shadow:0 0 8px rgba(216,1,66,.5)}
+.se-act{border:1px solid var(--line);border-radius:10px;padding:8px;margin:6px 0}
+.se-g{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.se-g label{font-size:11px;color:var(--dim);display:grid;gap:3px}
+.se-chk{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:5px 0;font-size:13px}.se-chk label{flex:1}.se-chk .inp{width:76px;flex:none}
+.se-un{display:flex;gap:8px;align-items:center;margin:4px 0}.se-un span{font-family:var(--f-mono);font-size:10px;min-width:36px;color:var(--dim)}
+.se .inp{font-size:16px}.se-del{color:var(--acc2)}
+
 .scard{width:100%;max-width:520px;max-height:84vh;overflow-y:auto;background:#120f22;border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0;box-shadow:var(--glow);padding:14px 14px calc(18px + env(safe-area-inset-bottom))}
 .mini-l.lg{margin:12px 0 6px;color:var(--acc2);font-family:var(--f-mono)}
 .lrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -344,7 +353,9 @@ var SKILLS=[
   {id:'business',n:'Business',stat:'BIZ',how:'Only learning: books, courses, entrepreneurship study. Daily work tasks give general XP and streaks, not skill XP.',
     un:{2:'Book boss slot: entrepreneurship',4:'Elite: apply one lesson this week',6:'Weekly boss: finish a course module',8:'Elite: teach a lesson to the team',10:'Title: Founder Mode'}}
 ];
-function skDef(id){return SKILLS.find(function(k){return k.id===id;});}
+var SK_ICONS={cooking:'🍳',parenting:'👨‍👧',rel:'❤️',business:'💼'};SKILLS.forEach(function(k){k.icon=SK_ICONS[k.id]||'⭐';});
+function skDef(id){return SKILLS.find(function(k){return k.id===id;})||{id:id,n:'(deleted skill)',stat:'INT',icon:'·',how:'',un:{}};}
+function skShort(k){return k.id==='rel'&&k.n==='Relationship with Shermayne'?'Shermayne':k.n;}
 var LV_T=[0,50,120,210,320,450,600,780,990,1230];
 // Existing quests/bosses → skills (anything not listed = general XP + streaks only).
 var SKILL_MAP={q:{read:{sk:'business',sg:15,why:'reading = study'},kids:{sk:'parenting',sg:25,why:'kids time = quality time'},cook:{sk:'cooking',sg:15,why:'cook at home'}},
@@ -390,6 +401,7 @@ function bookStat(b){var d=skDef(b.sk);return d?d.stat:'INT';}
 function X_clean(sx,o){var x=sx&&typeof sx==='object'?sx:{};var fresh=!sx;
   var out={skills:{},logs:Array.isArray(x.logs)?x.logs:[],elites:Array.isArray(x.elites)?x.elites:[],books:Array.isArray(x.books)?x.books:[],finals:x.finals&&typeof x.finals==='object'?x.finals:{},
     inbox:Array.isArray(x.inbox)?x.inbox:null,credit:Array.isArray(x.credit)?x.credit:[],importedFrom:x.importedFrom||null};
+  var cfg=SE_cleanCfg(x.cfg);SKILLS=cfg.skills;ACTS=cfg.acts;SKILL_MAP={q:cfg.q,b:cfg.b};out.cfg=cfg;
   SKILLS.forEach(function(k){var v=(x.skills||{})[k.id]||{};out.skills[k.id]={xp:Math.max(0,+v.xp||0),peak:Math.max(0,+v.peak||0,+v.xp||0),last:/^\d{4}-\d\d-\d\d$/.test(v.last||'')?v.last:null};});
   if(!o.quests.some(function(q){return q.id==='cook';}))o.quests.push({id:'cook',name:'Cook at home',xp:20,stat:'VIT'});
   if(fresh)creditHistory(o,out);
@@ -417,7 +429,7 @@ function logsToday(id){var t=dayKey();return S.x.logs.filter(function(l){return 
 /* ---------- views ---------- */
 function skillPips(v){var h='<div class="spips">';for(var i=1;i<=10;i++)h+='<i class="'+(i<=v.cur?'on':(i<=v.peak?'pk':''))+'"></i>';return h+'</div>';}
 function renderSkillMini(inPlayer){var h=(inPlayer?'':'<div class="mini-l" style="margin:8px 0 6px">SKILLS · current / peak</div>')+'<div class="skmini'+(inPlayer?' inp':'')+'">';
-  SKILLS.forEach(function(k){var v=skillView(k.id);h+='<div class="skm" data-tabgo="skills"><span class="n" style="color:var(--'+k.stat+')">'+esc(k.id==='rel'?'Shermayne':k.n)+'</span><b>'+v.cur+'</b><small>/'+v.peak+'</small>'+(v.boost?'<em>2×</em>':'')+'</div>';});
+  SKILLS.forEach(function(k){var v=skillView(k.id);h+='<div class="skm" data-tabgo="skills"><span class="n" style="color:var(--'+k.stat+')">'+esc((k.icon?k.icon+' ':'')+skShort(k))+'</span><b>'+v.cur+'</b><small>/'+v.peak+'</small>'+(v.boost?'<em>2×</em>':'')+'</div>';});
   return h+'</div>';}
 function statusLine(v){if(v.idle==null)return 'Not practised yet · baseline';
   var s=v.idle===0?'Practised today':'Idle '+v.idle+' day'+(v.idle>1?'s':'');
@@ -427,20 +439,21 @@ function renderSkills(){var h='<section class="panel"><div class="ptitle"><h2>SK
   '<p class="note" style="margin:0 0 10px">Current level fades when you stop practising: slowly at first, then faster. Peak never drops, and below peak you earn <b>2× skill XP</b>. Your player level and total XP never go down.</p>'+
   '<button class="btn solid wide" data-open-log>+ Log activity</button></section>';
   SKILLS.forEach(function(k){var v=skillView(k.id);
-    h+='<section class="panel skill"><div class="skhead"><div><div class="btag" style="color:var(--'+k.stat+')">SKILL · '+k.stat+'</div><div class="skname">'+esc(k.n)+'</div></div>'+
+    h+='<section class="panel skill"><div class="skhead"><div><div class="btag" style="color:var(--'+k.stat+')">SKILL · '+k.stat+'</div><div class="skname">'+esc((k.icon?k.icon+' ':'')+k.n)+'</div><button class="btn sm ghost" style="margin-top:6px" data-sk-edit="'+esc(k.id)+'">&#9998; Edit</button></div>'+
     '<div class="sklv"><span>LV</span><b>'+v.cur+'</b><small>PEAK '+v.peak+'</small></div></div>'+skillPips(v)+
     '<div class="bar"><i style="width:'+(v.cur>=10?100:(v.into/v.need*100)).toFixed(1)+'%;background:var(--'+k.stat+');box-shadow:0 0 10px var(--'+k.stat+')"></i></div>'+
     '<div class="xpnum"><span>'+(v.cur>=10?'MAX':v.into+' / '+v.need+' skill XP')+'</span><span>peak '+v.peakXP+' XP</span></div>'+
     '<p class="skstat">'+statusLine(v)+'</p><p class="note" style="margin-top:4px">'+esc(k.how)+'</p><div class="unl">';
-    Object.keys(k.un).forEach(function(L){var got=v.peak>=+L;h+='<div class="'+(got?'got':'')+'"><span>'+(got?'&#10003;':'LV '+L)+'</span>'+esc(k.un[L])+'</div>';});
-    h+='</div><div class="row-btns" style="margin-top:8px"><button class="btn sm" data-open-log="'+k.id+'">+ Log '+esc(k.id==='rel'?'quality time':k.n.toLowerCase())+'</button></div></section>';});
+    Object.keys(k.un).filter(function(L){return k.un[L];}).forEach(function(L){var got=v.peak>=+L;h+='<div class="'+(got?'got':'')+'"><span>'+(got?'&#10003;':'LV '+L)+'</span>'+esc(k.un[L])+'</div>';});
+    h+='</div><div class="row-btns" style="margin-top:8px"><button class="btn sm" data-open-log="'+k.id+'">+ Log '+esc(k.id==='rel'&&k.n==='Relationship with Shermayne'?'quality time':k.n.toLowerCase())+'</button></div></section>';});
+  h+='<section class="panel"><button class="btn solid wide" data-sk-add>+ Add skill</button></section>';
   if(S.x.credit.length||S.x.importedFrom){h+='<section class="panel"><div class="ptitle"><h2>CARRIED OVER</h2><span class="meta">from your v2 progress</span></div>';
     if(!S.x.credit.length)h+='<p class="hint">Nothing in your history mapped to a skill yet.</p>';
     S.x.credit.forEach(function(c){h+='<div class="qs"><span>'+esc(niceDay(c.d))+' · '+esc(c.src)+' <small class="mut2">('+esc(c.why)+')</small></span><span>'+esc(skDef(c.sk).n.replace(' with Shermayne',''))+' +'+c.sg+'</span></div>';});
     h+='<p class="hint">Work tasks, workouts and Blueprint habits stay general XP + streaks only.</p></section>';}
   var recent=S.x.logs.slice(-6).reverse();
   if(recent.length){h+='<section class="panel"><div class="ptitle"><h2>RECENT LOGS</h2></div>';
-    recent.forEach(function(l){var a=ACTS.find(function(x){return x.id===l.a;})||{n:l.a};var i=S.x.logs.indexOf(l);
+    recent.forEach(function(l){var a=ACTS.find(function(x){return x.id===l.a;})||{n:l.n||l.a};var i=S.x.logs.indexOf(l);
       h+='<div class="qs"><span>'+esc(niceDay(l.d))+' · '+esc(a.n)+'</span><span>+'+l.xp+(l.sg?' · +'+l.sg+' sk':'')+' <button class="xbtn" data-unlog="'+i+'" title="Remove">&times;</button></span></div>';});
     h+='</section>';}
   return h;}
@@ -449,7 +462,8 @@ function renderLogCard(){var n=S.x.logs.filter(function(l){return l.d===dayKey()
 function openSheet(filter){var o=document.getElementById('sheet');if(!o){o=document.createElement('div');o.id='sheet';o.className='sheet';document.body.appendChild(o);}
   o.dataset.f=filter||'';drawSheet();o.classList.add('show');}
 function drawSheet(){var o=document.getElementById('sheet');if(!o)return;var f=o.dataset.f;
-  var groups=[['cooking','Cooking'],['parenting','Parenting · quality time only'],['rel','Shermayne · quality time only'],['business','Business · learning only'],['general','General · XP & streaks, no skill']];
+  var SUB={cooking:'Cooking',parenting:'Parenting · quality time only',rel:'Shermayne · quality time only',business:'Business · learning only'},DEFN={cooking:'Cooking',parenting:'Parenting',rel:'Relationship with Shermayne',business:'Business'};
+  var groups=SKILLS.map(function(k){return [k.id,(k.icon?k.icon+' ':'')+(DEFN[k.id]===k.n?SUB[k.id]:k.n)];}).concat([['general','General · XP & streaks, no skill']]);
   var h='<div class="scard"><div class="ptitle"><h2>LOG ACTIVITY</h2><button class="btn sm ghost" data-close-sheet>Done</button></div><p class="note" style="margin:0 0 8px">Repeatable. Each activity has a small daily cap.</p>';
   groups.forEach(function(g){if(f&&g[0]!==f)return;h+='<div class="mini-l lg">'+esc(g[1]).toUpperCase()+'</div>';
     ACTS.filter(function(a){return a.g===g[0];}).forEach(function(a){var n=logsToday(a.id),full=n>=a.cap,boost=a.sk&&skillView(a.sk).boost;
@@ -507,14 +521,14 @@ function doRecipeSearch(){var q=(document.getElementById('recipeQ')||{}).value||
     F.recipe.res=(d.meals||[]).slice(0,6).map(function(m){return {title:m.strMeal,area:m.strArea||'',cat:m.strCategory||'',img:m.strMealThumb+'/preview',url:'https://www.themealdb.com/meal/'+m.idMeal};});})
   .catch(function(){F.recipe.err='Search failed. Check your connection.';}).then(function(){F.recipe.busy=false;if(tab==='boss')render();});}
 function finishBook(b){if(b.done)return;b.ch=b.chapters;b.done=dayKey();var msg='BOOK BEATEN! +400 XP';
-  if(b.sk){var s=S.x.skills[b.sk],c=curXP(s,dayKey()),L=lvlOf(c);var tgt=L<10?LV_T[L]:c;s.xp=Math.max(c,tgt);s.peak=Math.max(s.peak,s.xp);s.last=dayKey();msg+=' · '+skDef(b.sk).n.replace(' with Shermayne','')+' → LV '+Math.min(10,lvlOf(s.xp));}
+  if(b.sk&&S.x.skills[b.sk]){var s=S.x.skills[b.sk],c=curXP(s,dayKey()),L=lvlOf(c);var tgt=L<10?LV_T[L]:c;s.xp=Math.max(c,tgt);s.peak=Math.max(s.peak,s.xp);s.last=dayKey();msg+=' · '+skDef(b.sk).n.replace(' with Shermayne','')+' → LV '+Math.min(10,lvlOf(s.xp));}
   return msg;}
-function X_click(t){var a;
+function X_click(t){var a;if(SE_click(t))return true;
   if((a=t.closest('[data-tabgo]'))){tab=a.dataset.tabgo;render();window.scrollTo(0,0);return true;}
   if((a=t.closest('[data-open-log]'))){openSheet(a.dataset.openLog);return true;}
   if(t.closest('[data-close-sheet]')||t.id==='sheet'){closeSheet();return true;}
   if((a=t.closest('[data-log]'))){var act=ACTS.find(function(x){return x.id===a.dataset.log;});if(!act||logsToday(act.id)>=act.cap)return true;
-    var g=act.sk?practice(act.sk,act.sg,act.n):0;S.x.logs.push({d:dayKey(),a:act.id,xp:act.xp,stat:act.stat,sk:act.sk||null,sg:g});commit('+'+act.xp+' XP · '+act.stat+' +1'+(g?' · '+skDef(act.sk).n.replace(' with Shermayne','')+' +'+g:''));drawSheet();return true;}
+    var g=act.sk?practice(act.sk,act.sg,act.n):0;S.x.logs.push({d:dayKey(),a:act.id,n:act.n,xp:act.xp,stat:act.stat,sk:act.sk||null,sg:g});commit('+'+act.xp+' XP · '+act.stat+' +1'+(g?' · '+skDef(act.sk).n.replace(' with Shermayne','')+' +'+g:''));drawSheet();return true;}
   if((a=t.closest('[data-unlog]'))){var l=S.x.logs[+a.dataset.unlog];if(l){if(l.sk)unpractice(l.sk,l.sg);S.x.logs.splice(+a.dataset.unlog,1);commit('Log removed');}return true;}
   if((a=t.closest('[data-elite-done]'))){var e=S.x.elites.find(function(x){return x.id===a.dataset.eliteDone;});if(!e)return true;
     if(e.done){if(e.sk)unpractice(e.sk,e.gained);e.done=null;commit('-'+e.xp+' XP');}else{e.done=dayKey();e.gained=e.sk?practice(e.sk,e.sg,e.name):0;commit('ELITE DOWN! +'+e.xp+' XP'+(e.gained?' · skill +'+e.gained:''));}return true;}
@@ -539,6 +553,94 @@ function X_click(t){var a;
   return false;}
 document.addEventListener('keydown',function(ev){if(ev.key!=='Enter')return;if(ev.target.id==='bookQ'){ev.preventDefault();doBookSearch();}if(ev.target.id==='recipeQ'){ev.preventDefault();doRecipeSearch();}});
 document.addEventListener('input',function(ev){if(ev.target.id==='bookQ')F.book.q=ev.target.value;if(ev.target.id==='recipeQ')F.recipe.q=ev.target.value;});
+/* ---------- skill customization (editor) ---------- */
+var SE_DEF=JSON.parse(JSON.stringify({skills:SKILLS,acts:ACTS,q:SKILL_MAP.q,b:SKILL_MAP.b}));
+var SE_EMO=['⭐','🍳','👨‍👧','❤️','💼','💪','🏃','🧘','📚','🧠','🎸','🎨','💻','🗣️','💰','🌱','🛠️','✍️','🎯','🙏','🏡','🧹','⚽','🚴'];
+function SE_id(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function SE_num(v,lo,hi,d){v=Math.round(+v);if(!isFinite(v))v=d;return Math.max(lo,Math.min(hi,v));}
+function SE_cleanCfg(c){var d=JSON.parse(JSON.stringify(SE_DEF));
+  if(!c||typeof c!=='object'||!Array.isArray(c.skills))return d; // migration: older saves get the built-in skills
+  var ids={},out={skills:[],acts:[],q:{},b:{}};
+  c.skills.forEach(function(k){if(!k||!k.id||ids[k.id])return;ids[k.id]=1;var un={};Object.keys(k.un||{}).forEach(function(L){if(+L>=1&&+L<=10&&k.un[L])un[+L]=String(k.un[L]).slice(0,140);});
+    out.skills.push({id:String(k.id),n:String(k.n||'Skill').slice(0,60),icon:String(k.icon||'⭐').slice(0,8),stat:STATS.indexOf(k.stat)>=0?k.stat:'INT',how:String(k.how||'').slice(0,300),un:un});});
+  (Array.isArray(c.acts)?c.acts:d.acts).forEach(function(a){if(!a||!a.id)return;var sk=a.sk&&ids[a.sk]?String(a.sk):null;if(a.sk&&!sk)return;
+    out.acts.push({id:String(a.id),g:sk||'general',n:String(a.n||'Activity').slice(0,80),stat:STATS.indexOf(a.stat)>=0?a.stat:'INT',xp:SE_num(a.xp,0,500,10),sk:sk||undefined,sg:sk?SE_num(a.sg,0,500,10):undefined,cap:SE_num(a.cap,1,20,1)});});
+  ['q','b'].forEach(function(t){var m=c[t]||{};Object.keys(m).forEach(function(id){var e=m[id];if(e&&ids[e.sk])out[t][id]={sk:e.sk,sg:SE_num(e.sg,0,500,15),why:String(e.why||'counts toward skill')};});});
+  return out;}
+var SE=null; // editor draft
+function SE_open(id){var isNew=!id;
+  if(isNew){id=SE_id('s');SE={isNew:true,k:{id:id,n:'New skill',icon:'⭐',stat:'INT',how:'',un:{}},acts:[],q:{},b:{},lv:1,pk:1,lv0:1,pk0:1};}
+  else{var k=SKILLS.find(function(x){return x.id===id;});if(!k)return;var v=skillView(id),q={},b={};
+    Object.keys(SKILL_MAP.q).forEach(function(i){if(SKILL_MAP.q[i].sk===id)q[i]=SKILL_MAP.q[i].sg;});Object.keys(SKILL_MAP.b).forEach(function(i){if(SKILL_MAP.b[i].sk===id)b[i]=SKILL_MAP.b[i].sg;});
+    SE={k:JSON.parse(JSON.stringify(k)),acts:JSON.parse(JSON.stringify(ACTS.filter(function(a){return a.sk===id;}))),q:q,b:b,lv:v.cur,pk:v.peak,lv0:v.cur,pk0:v.peak};}
+  var o=document.getElementById('skedit');if(!o){o=document.createElement('div');o.id='skedit';o.className='sheet';document.body.appendChild(o);}
+  SE_draw();o.classList.add('show');o.querySelector('.scard').scrollTop=0;}
+function SE_close(){SE=null;var o=document.getElementById('skedit');if(o)o.classList.remove('show');}
+function SE_stats(sel,attr){return '<select class="inp sm" '+attr+'>'+STATS.map(function(st){return '<option value="'+st+'"'+(st===sel?' selected':'')+'>'+st+' · '+STAT_NAME[st]+'</option>';}).join('')+'</select>';}
+function SE_owner(t,id){var m=SKILL_MAP[t][id];return m&&m.sk!==SE.k.id?skDef(m.sk).n:'';}
+function SE_draw(){var o=document.getElementById('skedit');if(!o||!SE)return;var k=SE.k,st=o.querySelector('.scard')?o.querySelector('.scard').scrollTop:0;
+  var h='<div class="scard se"><div class="ptitle"><h2>'+(SE.isNew?'ADD SKILL':'EDIT SKILL')+'</h2><button class="btn sm ghost" data-se-cancel>Cancel</button></div>'+
+  '<label class="se-l">Name</label><input class="inp" data-se="n" value="'+esc(k.n)+'" maxlength="60">'+
+  '<label class="se-l">Icon</label><div class="se-emo">'+SE_EMO.map(function(e){return '<button class="'+(e===k.icon?'on':'')+'" data-se-emo="'+e+'">'+e+'</button>';}).join('')+'</div>'+
+  '<input class="inp sm" data-se="icon" value="'+esc(k.icon)+'" maxlength="8" placeholder="or type/paste any emoji" style="margin-top:6px">'+
+  '<label class="se-l">Parent stat</label>'+SE_stats(k.stat,'data-se="stat"')+
+  '<label class="se-l">What counts (description)</label><textarea class="inp" rows="2" data-se="how" maxlength="300">'+esc(k.how)+'</textarea>'+
+  '<div class="mini-l lg">ACTIVITIES THAT EARN SKILL XP</div>';
+  if(!SE.acts.length)h+='<p class="hint">No activities yet.</p>';
+  SE.acts.forEach(function(a,i){h+='<div class="se-act"><div class="srch"><input class="inp sm" data-se-a="n" data-i="'+i+'" value="'+esc(a.n)+'" maxlength="80"><button class="btn sm ghost" data-se-adel="'+i+'" title="Remove">&times;</button></div>'+
+    '<div class="se-g"><label>XP<input class="inp sm" type="number" inputmode="numeric" min="0" data-se-a="xp" data-i="'+i+'" value="'+a.xp+'"></label><label>Skill XP<input class="inp sm" type="number" inputmode="numeric" min="0" data-se-a="sg" data-i="'+i+'" value="'+a.sg+'"></label><label>Daily cap<input class="inp sm" type="number" inputmode="numeric" min="1" data-se-a="cap" data-i="'+i+'" value="'+a.cap+'"></label><label>Stat'+SE_stats(a.stat,'data-se-a="stat" data-i="'+i+'"')+'</label></div></div>';});
+  h+='<button class="btn sm wide" data-se-aadd>+ Add activity</button>';
+  h+='<div class="mini-l lg">DAILY QUESTS THAT COUNT</div>';
+  S.quests.forEach(function(q){var on=q.id in SE.q,ow=SE_owner('q',q.id);h+='<div class="se-chk"><label><input type="checkbox" data-se-qt="q" data-id="'+esc(q.id)+'"'+(on?' checked':'')+'> '+esc(q.name)+(ow&&!on?' <small class="mut2">(now: '+esc(ow)+')</small>':'')+'</label>'+(on?'<input class="inp sm" type="number" inputmode="numeric" min="0" data-se-qsg="q" data-id="'+esc(q.id)+'" value="'+SE.q[q.id]+'" title="Skill XP">':'')+'</div>';});
+  h+='<div class="mini-l lg">WEEKLY BOSSES THAT COUNT</div>';
+  S.bosses.forEach(function(q){var on=q.id in SE.b,ow=SE_owner('b',q.id);h+='<div class="se-chk"><label><input type="checkbox" data-se-qt="b" data-id="'+esc(q.id)+'"'+(on?' checked':'')+'> '+esc(q.name)+(ow&&!on?' <small class="mut2">(now: '+esc(ow)+')</small>':'')+'</label>'+(on?'<input class="inp sm" type="number" inputmode="numeric" min="0" data-se-qsg="b" data-id="'+esc(q.id)+'" value="'+SE.b[q.id]+'" title="Skill XP">':'')+'</div>';});
+  h+='<p class="hint">Elites and book bosses count when you pick this skill on them.</p><div class="mini-l lg">UNLOCKS BY LEVEL</div>';
+  for(var L=1;L<=10;L++)h+='<div class="se-un"><span>LV '+L+'</span><input class="inp sm" data-se-un="'+L+'" value="'+esc(k.un[L]||'')+'" maxlength="140" placeholder="(nothing)"></div>';
+  h+='<div class="mini-l lg">SET LEVEL MANUALLY</div><div class="se-g"><label>Current level<select class="inp sm" data-se="lv">';
+  for(L=1;L<=10;L++)h+='<option'+(L===SE.lv?' selected':'')+'>'+L+'</option>';
+  h+='</select></label><label>Peak level<select class="inp sm" data-se="pk">';for(L=1;L<=10;L++)h+='<option'+(L===SE.pk?' selected':'')+'>'+L+'</option>';
+  h+='</select></label></div><p class="hint">Peak can’t be below current. You’ll be asked to confirm.</p>'+
+  '<div class="row-btns" style="margin-top:12px"><button class="btn solid" data-se-save>Save skill</button>'+(SE.isNew?'':'<button class="btn ghost se-del" data-se-delete>Delete skill</button>')+'</div></div>';
+  o.innerHTML=h;o.querySelector('.scard').scrollTop=st;}
+function SE_input(t){if(!SE)return false;var d=t.dataset,k=SE.k;
+  if(d.se){if(d.se==='lv'||d.se==='pk'){SE[d.se]=+t.value;if(SE.pk<SE.lv){if(d.se==='lv')SE.pk=SE.lv;else SE.lv=SE.pk;SE_draw();}}else{k[d.se]=t.value;if(d.se==='icon')document.querySelectorAll('[data-se-emo]').forEach(function(b){b.classList.toggle('on',b.dataset.seEmo===t.value);});}return true;}
+  if(d.seA){var a=SE.acts[+d.i];if(a)a[d.seA]=t.value;return true;}
+  if(d.seUn){k.un[d.seUn]=t.value;return true;}
+  if(d.seQsg){SE[d.seQsg][d.id]=t.value;return true;}
+  if(d.seQt){if(t.checked)SE[d.seQt][d.id]=d.seQt==='q'?15:30;else delete SE[d.seQt][d.id];SE_draw();return true;}
+  return false;}
+function SE_save(){var k=SE.k,id=k.id;k.n=(k.n||'').trim();if(!k.n){toast('Give the skill a name');return;}
+  k.icon=(k.icon||'').trim()||'⭐';var un={};for(var L=1;L<=10;L++)if((k.un[L]||'').trim())un[L]=k.un[L].trim();k.un=un;
+  var lvChg=SE.lv!==SE.lv0||SE.pk!==SE.pk0;
+  if(lvChg&&!confirm('Set '+k.n+' to level '+SE.lv+' (peak '+SE.pk+')? This overrides earned skill XP.'))return;
+  var i=SKILLS.findIndex(function(x){return x.id===id;});if(i>=0)SKILLS[i]=k;else SKILLS.push(k);
+  var acts=SE.acts.filter(function(a){return (a.n||'').trim();}).map(function(a){return {id:a.id,g:id,n:a.n.trim(),stat:STATS.indexOf(a.stat)>=0?a.stat:k.stat,xp:SE_num(a.xp,0,500,10),sk:id,sg:SE_num(a.sg,0,500,10),cap:SE_num(a.cap,1,20,1)};});
+  var rest=ACTS.filter(function(a){return a.sk!==id;}),gi=rest.findIndex(function(a){return a.g==='general';});if(gi<0)gi=rest.length;
+  ACTS.length=0;Array.prototype.push.apply(ACTS,rest.slice(0,gi).concat(acts,rest.slice(gi)));
+  ['q','b'].forEach(function(t){var m=SKILL_MAP[t];Object.keys(m).forEach(function(x){if(m[x].sk===id)delete m[x];});Object.keys(SE[t]).forEach(function(x){m[x]={sk:id,sg:SE_num(SE[t][x],0,500,15),why:'counts toward '+k.n};});});
+  if(!S.x.skills[id])S.x.skills[id]={xp:0,peak:0,last:null};
+  if(lvChg){var s=S.x.skills[id];if(SE.lv!==SE.lv0){s.xp=LV_T[SE.lv-1];s.last=dayKey();}if(SE.pk!==SE.pk0)s.peak=Math.max(s.xp,LV_T[SE.pk-1]);s.peak=Math.max(s.peak,s.xp);}
+  S.x.cfg={skills:SKILLS,acts:ACTS,q:SKILL_MAP.q,b:SKILL_MAP.b};var nw=SE.isNew;SE_close();commit(nw?'Skill added: '+k.n:'Skill saved: '+k.n);}
+function SE_delete(){var k=SE.k;if(!confirm('Delete the skill "'+k.n+'"? Its activities and level are removed. XP you already earned stays.'))return;
+  var id=k.id,i=SKILLS.findIndex(function(x){return x.id===id;});if(i>=0)SKILLS.splice(i,1);
+  for(var j=ACTS.length-1;j>=0;j--)if(ACTS[j].sk===id)ACTS.splice(j,1);
+  ['q','b'].forEach(function(t){var m=SKILL_MAP[t];Object.keys(m).forEach(function(x){if(m[x].sk===id)delete m[x];});});
+  delete S.x.skills[id];S.x.cfg={skills:SKILLS,acts:ACTS,q:SKILL_MAP.q,b:SKILL_MAP.b};SE_close();commit('Skill deleted: '+k.n);}
+function SE_click(t){var a;
+  if((a=t.closest('[data-sk-edit]'))){SE_open(a.dataset.skEdit);return true;}
+  if(t.closest('[data-sk-add]')){SE_open(null);return true;}
+  if(!SE)return false;
+  if(t.closest('[data-se-cancel]')||t.id==='skedit'){SE_close();return true;}
+  if((a=t.closest('[data-se-emo]'))){SE.k.icon=a.dataset.seEmo;SE_draw();return true;}
+  if(t.closest('[data-se-aadd]')){SE.acts.push({id:SE_id('a'),n:'New activity',stat:SE.k.stat,xp:15,sg:15,cap:1});SE_draw();var ins=document.querySelectorAll('[data-se-a="n"]'),x=ins[ins.length-1];if(x){x.scrollIntoView({block:'center'});x.focus();x.select();}return true;}
+  if((a=t.closest('[data-se-adel]'))){SE.acts.splice(+a.dataset.seAdel,1);SE_draw();return true;}
+  if(t.closest('[data-se-save]')){SE_save();return true;}
+  if(t.closest('[data-se-delete]')){SE_delete();return true;}
+  if(t.closest('#skedit'))return true;
+  return false;}
+document.addEventListener('input',function(ev){if(ev.target.closest&&ev.target.closest('#skedit')&&ev.target.type!=='checkbox'&&ev.target.tagName!=='SELECT')SE_input(ev.target);});
+document.addEventListener('change',function(ev){if(ev.target.closest&&ev.target.closest('#skedit')){ev.stopImmediatePropagation();SE_input(ev.target);}},true);
+
 /* ===================== end preview extensions ===================== */
 
 /* ---------- time (America/Vancouver) ---------- */
